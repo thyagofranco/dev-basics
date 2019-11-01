@@ -6,30 +6,32 @@ module.exports = {
 		
 							
 		await db.query('BEGIN')
-			.then(customerSelectId = () => {
-				await db.query(`
+			.then(async () => {
+				const customerSelectId = await db.query(`
 				SELECT "id" FROM "Customers"  Where "id" = ${orderData.buyer.id}
 				`);			
 				if(!customerSelectId.rows[0].id){
 					await db.query('ROOLBACK');
 					return res.status(500).send({message: 'Cliente não cadastrado'});
 				}
+				return customerSelectId;
 			})
-			.then(orderQuery = () => {
+			.then(async (customerSelectId) => {
 				const orderQueryText = `
 				INSERT INTO "Orders" ("id", "customer_id", "total", "status","createdAt","updatedAt")
 				VALUES (DEFAULT, $1,$2,$3,NOW(),NOW()) RETURNING id
 				`;
 				
 				const orderQueryValues = [
-				customerSelectId.rows[0].id,
-				orderData.total,
-				orderData.status,
+					customerSelectId.rows[0].id,
+					orderData.total,
+					orderData.status,
 				
 				];
-				await db.query(orderQueryText,orderQueryValues);
+				const orderQuery = await db.query(orderQueryText,orderQueryValues);
+				return orderQuery;
 			})
-			.then(orderItemQuery = () => {
+			.then(async (orderQuery) => {
 				items.forEach(async (item) => {
 					const productSelectId = await db.query(`
 					SELECT "id" FROM "Products"  WHERE "id" = ${item.product.id}
@@ -51,18 +53,19 @@ module.exports = {
 						item.total
 		
 					];
-				await db.query(orderItemQueryText,orderItemValues);
-				})
+					await db.query(orderItemQueryText,orderItemValues);
+				});
+				return orderQuery;
 			})
-			.then(commit = () => {
+			.then(async (orderQuery) => {
 				await db.query('COMMIT');
 				return res.status(201).send({message: `${orderQuery.rowCount} pedido cadastrado com sucesso`});
 			})
-			.catch(err => {
-				console.error(err)	
+			.catch(async (err) => {
+				console.error(err);	
 				await db.query('ROLLBACk');
 				return res.status(404).send(err);
-			})	
+			});	
 			
 	}
 
