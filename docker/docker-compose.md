@@ -15,6 +15,8 @@ services:
       - "5432:5432"
     networks:
       - postgres-network
+    volumes:
+      - pg-data: /var/lib/postgresql/data
       
   pgadmin:
     image: dpage/pgadmin4
@@ -31,4 +33,7 @@ services:
 networks: 
   postgres-network:
     driver: bridge
+
+volumes: 
+  pg-data:
 ```                      
